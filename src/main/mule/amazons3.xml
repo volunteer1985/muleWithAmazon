@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<mule xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core"
+	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
+	<flow name="createBucket" doc:id="f68ba28d-3ec3-42a8-8c85-fd75805b9197" >
+		<http:listener doc:name="Listener" doc:id="3cbd72c2-c8e3-4dca-8b7f-b492c0dfad84" config-ref="HTTP_Listener_config" path="/createBucket" allowedMethods="GET"/>
+		<set-variable value='#[%dw 2.3&#10;&#10;output application/json&#10;---&#10;"udemybucket" ++ uuid()]' doc:name="Set bucketName" doc:id="4d7529c1-be1c-4219-95b8-00fee9c8e99e" variableName="bucketName"/>
+		<logger level="INFO" doc:name="Logger" doc:id="33874c74-9fba-42e4-9722-07da8c1829e9" message="#[vars.bucketName]"/>
+		<s3:create-bucket doc:name="Create bucket" doc:id="8f4b0d27-ac20-4485-9687-3f68ee1fe9bf" config-ref="Amazon_S3_Configuration" bucketName="#[vars.bucketName]" region="EU_IRELAND"/>
+		<set-payload value='#[%dw 2.3&#10;&#10;output application/json&#10;---&#10;{&#10;	"output": payload&#10;}]' doc:name="Set Payload" doc:id="6a98e970-5711-4b6a-b890-e74221d0c2e7" />
+	</flow>
+	<flow name="createAmazonS3Object" doc:id="57dca473-483e-4e7c-ae24-3a4ab9b441b4" >
+		<http:listener doc:name="HTTP POST" doc:id="7e6542da-db41-490d-82f3-e80d32e47876" config-ref="HTTP_Listener_config" allowedMethods="POST" path="/createObject"/>
+		<set-variable value="#[attributes.headers.bucketName]" doc:name="Set bucketName" doc:id="23b89c4a-f951-4f2d-8c6e-819f73693d76" variableName="bucketName"/>
+		<set-variable value='#[%dw 2.0&#10;&#10;var nanoSecondCountOfDay = now() as String {format: "N"} &#10;&#10;output applicatin/json&#10;---&#10;"Order" ++ now().year ++"/order-" ++ nanoSecondCountOfDay ++ ".json"]' doc:name="Set objectKey" doc:id="da2c73f2-97ef-4bde-a4c5-5af44a2f67ab" variableName="objectKey"/>
+		<logger level="INFO" doc:name="Log Data" doc:id="a0ae20bd-0ff5-43cf-ba07-b760f660e5ab" message='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;	"bucketName": vars.bucketName,&#10;	"objectKey": vars.objectKey&#10;}]'/>
+		<s3:create-object doc:name="Create object" doc:id="84847325-18d4-4fdf-bd53-e7b879211459" config-ref="Amazon_S3_Configuration" bucketName="#[vars.bucketName]" key="#[vars.objectKey]" acl="PUBLIC_READ_WRITE"/>
+		<set-payload value='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;	"output": payload&#10;}]' doc:name="Set Payload" doc:id="6881f743-010d-4cef-b5c1-5a0ae4c09f8f" />
+	</flow>
+</mule>
