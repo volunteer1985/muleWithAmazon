@@ -1,10 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
-<mule xmlns:s3="http://www.mulesoft.org/schema/mule/s3" xmlns:http="http://www.mulesoft.org/schema/mule/http"
-	xmlns="http://www.mulesoft.org/schema/mule/core"
-	xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
+<mule xmlns:ee="http://www.mulesoft.org/schema/mule/ee/core" xmlns:s3="http://www.mulesoft.org/schema/mule/s3"
+	xmlns:http="http://www.mulesoft.org/schema/mule/http"
+	xmlns="http://www.mulesoft.org/schema/mule/core" xmlns:doc="http://www.mulesoft.org/schema/mule/documentation" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
 http://www.mulesoft.org/schema/mule/http http://www.mulesoft.org/schema/mule/http/current/mule-http.xsd
-http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd">
+http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/current/mule-s3.xsd
+http://www.mulesoft.org/schema/mule/ee/core http://www.mulesoft.org/schema/mule/ee/core/current/mule-ee.xsd">
 	<flow name="createBucket" doc:id="f68ba28d-3ec3-42a8-8c85-fd75805b9197" >
 		<http:listener doc:name="Listener" doc:id="3cbd72c2-c8e3-4dca-8b7f-b492c0dfad84" config-ref="HTTP_Listener_config" path="/createBucket" allowedMethods="GET"/>
 		<set-variable value='#[%dw 2.3&#10;&#10;output application/json&#10;---&#10;"udemybucket" ++ uuid()]' doc:name="Set bucketName" doc:id="4d7529c1-be1c-4219-95b8-00fee9c8e99e" variableName="bucketName"/>
@@ -19,5 +20,22 @@ http://www.mulesoft.org/schema/mule/s3 http://www.mulesoft.org/schema/mule/s3/cu
 		<logger level="INFO" doc:name="Log Data" doc:id="a0ae20bd-0ff5-43cf-ba07-b760f660e5ab" message='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;	"bucketName": vars.bucketName,&#10;	"objectKey": vars.objectKey&#10;}]'/>
 		<s3:create-object doc:name="Create object" doc:id="84847325-18d4-4fdf-bd53-e7b879211459" config-ref="Amazon_S3_Configuration" bucketName="#[vars.bucketName]" key="#[vars.objectKey]" acl="PUBLIC_READ_WRITE"/>
 		<set-payload value='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;	"output": payload&#10;}]' doc:name="Set Payload" doc:id="6881f743-010d-4cef-b5c1-5a0ae4c09f8f" />
+	</flow>
+	<flow name="amazonS3GetObject" doc:id="4961b7cc-5c84-4e70-b704-dc71e4b8d8c8" >
+		<http:listener doc:name="HTTP GET" doc:id="e3e9c2c2-f5a8-48ea-a7a5-0921f8919303" config-ref="HTTP_Listener_config" path="/getObject" allowedMethods="GET"/>
+		<set-variable value="#[attributes.headers.bucketName]" doc:name="Set bucketName" doc:id="0eeed32c-a370-4254-919a-acf9cb68d174" variableName="bucketName"/>
+		<set-variable value="#[message.attributes.queryParams.objectKey]" doc:name="Set objectKey" doc:id="62f7a09a-6d67-4bd5-aca2-4da766867687" variableName="objectKey"/>
+		<logger level="INFO" doc:name="Log Data" doc:id="27e7dd4b-e2cf-4879-983a-41ce4e3bc4dd" message='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;	"bucketName": vars.bucketName,&#10;	"objectKey": vars.objectKey&#10;	&#10;}]'/>
+		<s3:get-object doc:name="Get object" doc:id="3e2e5e97-09ed-4d13-911c-60b35e5883b8" config-ref="Amazon_S3_Configuration" bucketName="#[vars.bucketName]" key="#[attributes.queryParams.objectKey]"/>
+		<ee:transform doc:name="Transform Message" doc:id="ec0d9317-543d-490f-bbf9-33538c2bf1b9" >
+			<ee:message >
+				<ee:set-payload ><![CDATA[%dw 2.0
+output application/json
+---
+read(payload, "application/json")]]></ee:set-payload>
+			</ee:message>
+		</ee:transform>
+		<logger level="INFO" doc:name="Log Payload" doc:id="e83a80a3-f4b6-4be8-9747-3710dc05edc7" message="#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;payload]"/>
+		<set-payload value='#[%dw 2.0&#10;&#10;output application/json&#10;---&#10;{&#10;"output":payload&#10;}]' doc:name="Set Payload" doc:id="8fcd091b-8c1c-435d-8b0c-3512ca4b4614" />
 	</flow>
 </mule>
